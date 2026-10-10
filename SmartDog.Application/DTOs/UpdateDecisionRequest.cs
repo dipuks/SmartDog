@@ -12,6 +12,7 @@ public record UpdateDecisionRequest(
 
     [Required]
     [StringLength(50, MinimumLength = 1)]
+    [RegularExpression("^(Draft|Created|InProgress|Completed|Cancelled)$")]
     string Status,
 
     [Required]

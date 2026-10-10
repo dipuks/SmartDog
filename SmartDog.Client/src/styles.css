@@ -1,0 +1,32 @@
+:root {
+  color-scheme: light;
+  --ink: #172923;
+  --muted: #697a73;
+  --accent: #238566;
+  --accent-dark: #17684f;
+  --tint: #e8f4ee;
+  --line: #dce7e1;
+  --surface: #fff;
+  --danger: #a52e36;
+  --shadow: 0 12px 32px rgb(30 61 47 / 7%);
+  font-family: 'Segoe UI', sans-serif;
+  color: var(--ink);
+  background: #f6f9f7;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* { box-sizing: border-box; }
+body { min-width: 320px; min-height: 100vh; margin: 0; }
+h1, h2, h3 { font-family: 'Segoe UI', sans-serif; }
+button { font: inherit; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #62b796; outline-offset: 2px; }
+.primary-button, .secondary-button { min-height: 2.65rem; padding: .65rem 1rem; border: 1px solid transparent; border-radius: .5rem; font-weight: 750; cursor: pointer; }
+.primary-button { background: var(--accent); color: #fff; }
+.primary-button:hover:not(:disabled) { background: var(--accent-dark); }
+.secondary-button { border-color: var(--line); background: #fff; color: var(--ink); }
+.secondary-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-dark); }
+button:disabled { cursor: not-allowed; opacity: .55; }
+.error-banner { color: var(--danger); }

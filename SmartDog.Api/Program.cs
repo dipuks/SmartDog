@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
+using System.Threading.RateLimiting;
 using SmartDog.Api.Middleware;
 using SmartDog.Api.Workers;
+using SmartDog.Domain.Engines;
 using SmartDog.Application.Configuration;
 using SmartDog.Application.Services;
 using SmartDog.Domain.Models;
@@ -46,12 +48,17 @@ builder.Services.AddScoped<
 
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter("login", limiterOptions =>
-    {
-        limiterOptions.PermitLimit = 5;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.QueueLimit = 0;
-    });
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("login", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 });
 
 builder.Services.AddControllers();
@@ -117,6 +124,22 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IDecisionAlternativeService,
     DecisionAlternativeService>();
+
+builder.Services.AddScoped<
+    IDecisionCriterionRepository,
+    DecisionCriterionRepository>();
+builder.Services.AddScoped<
+    IDecisionCriterionService,
+    DecisionCriterionService>();
+builder.Services.AddScoped<
+    IDecisionAlternativeRatingService,
+    DecisionAlternativeRatingService>();
+builder.Services.AddScoped<
+    IDecisionScoringService,
+    DecisionScoringService>();
+builder.Services.AddScoped<
+    IDecisionScoringEngine,
+    WeightedDecisionScoringEngine>();
 
 builder.Services.AddMemoryCache();
 

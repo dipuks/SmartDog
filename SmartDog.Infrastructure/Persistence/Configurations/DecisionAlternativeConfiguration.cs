@@ -14,6 +14,8 @@ public class DecisionAlternativeConfiguration
 
         builder.HasKey(a => a.Id);
 
+        builder.HasAlternateKey(a => new { a.Id, a.DecisionId });
+
         builder.Property(a => a.Name)
             .IsRequired()
             .HasMaxLength(200);

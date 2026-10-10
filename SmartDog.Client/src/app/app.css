@@ -1,0 +1,6 @@
+:host { display: block; min-height: 100vh; }
+.topbar { display: flex; height: 4.5rem; align-items: center; justify-content: space-between; padding: 0 max(1rem, calc((100vw - 70rem) / 2)); border-bottom: 1px solid var(--line); background: var(--surface); }
+.brand { display: inline-flex; align-items: center; gap: .65rem; color: var(--ink); font-size: 1.1rem; font-weight: 850; letter-spacing: -.03em; text-decoration: none; }
+.brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: .65rem; background: var(--accent); color: #fff; font-size: 1rem; }
+.text-button { padding: .5rem .7rem; border: 0; background: transparent; color: var(--muted); font-weight: 700; cursor: pointer; }
+.text-button:hover { color: var(--accent-dark); }

@@ -13,4 +13,7 @@ public class DecisionAlternative
     public decimal Score { get; set; }
 
     public Decision? Decision { get; set; }
+
+    public ICollection<DecisionAlternativeCriterionRating> CriterionRatings { get; set; }
+        = new List<DecisionAlternativeCriterionRating>();
 }

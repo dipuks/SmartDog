@@ -7,16 +7,24 @@ public class DecisionAlternativeService
     : IDecisionAlternativeService
 {
     private readonly IDecisionAlternativeRepository _repository;
+    private readonly IDecisionRepository _decisionRepository;
 
     public DecisionAlternativeService(
-        IDecisionAlternativeRepository repository)
+        IDecisionAlternativeRepository repository,
+        IDecisionRepository decisionRepository)
     {
         _repository = repository;
+        _decisionRepository = decisionRepository;
     }
 
-    public async Task<IReadOnlyList<DecisionAlternativeDto>>
+    public async Task<IReadOnlyList<DecisionAlternativeDto>?>
         GetByDecisionIdAsync(Guid decisionId)
     {
+        if (await _decisionRepository.GetByIdAsync(decisionId) is null)
+        {
+            return null;
+        }
+
         var alternatives =
             await _repository.GetByDecisionIdAsync(decisionId);
 
@@ -45,6 +53,11 @@ public class DecisionAlternativeService
             Guid decisionId,
             CreateDecisionAlternativeRequest request)
     {
+        if (await _decisionRepository.GetByIdAsync(decisionId) is null)
+        {
+            return null;
+        }
+
         var alternative = new DecisionAlternative
         {
             Id = Guid.NewGuid(),

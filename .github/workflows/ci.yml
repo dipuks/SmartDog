@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend build and tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore SmartDog.slnx
+
+      - name: Build
+        run: dotnet build SmartDog.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test SmartDog.slnx --no-restore --no-build --configuration Release
+
+  frontend:
+    name: Frontend build, tests and audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: SmartDog.Client/package-lock.json
+
+      - name: Install
+        run: npm ci --prefix SmartDog.Client
+
+      - name: Build
+        run: npm run build --prefix SmartDog.Client
+
+      - name: Test
+        run: npm test --prefix SmartDog.Client -- --watch=false
+
+      - name: Audit dependencies
+        run: npm audit --prefix SmartDog.Client

@@ -84,6 +84,55 @@ namespace SmartDog.Infrastructure.Migrations
                     b.ToTable("DecisionAlternatives", (string)null);
                 });
 
+            modelBuilder.Entity("SmartDog.Domain.Models.DecisionAlternativeCriterionRating", b =>
+                {
+                    b.Property<Guid>("DecisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DecisionAlternativeId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DecisionCriterionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Rating")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("DecisionId", "DecisionAlternativeId", "DecisionCriterionId");
+
+                    b.HasIndex("DecisionAlternativeId", "DecisionId");
+
+                    b.HasIndex("DecisionCriterionId", "DecisionId");
+
+                    b.ToTable("DecisionAlternativeCriterionRatings", (string)null);
+                });
+
+            modelBuilder.Entity("SmartDog.Domain.Models.DecisionCriterion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("DecisionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DecisionId");
+
+                    b.ToTable("DecisionCriteria", (string)null);
+                });
+
             modelBuilder.Entity("SmartDog.Domain.Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -124,9 +173,53 @@ namespace SmartDog.Infrastructure.Migrations
                     b.Navigation("Decision");
                 });
 
+            modelBuilder.Entity("SmartDog.Domain.Models.DecisionAlternativeCriterionRating", b =>
+                {
+                    b.HasOne("SmartDog.Domain.Models.DecisionAlternative", "Alternative")
+                        .WithMany("CriterionRatings")
+                        .HasForeignKey("DecisionAlternativeId", "DecisionId")
+                        .HasPrincipalKey("Id", "DecisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("SmartDog.Domain.Models.DecisionCriterion", "Criterion")
+                        .WithMany("Ratings")
+                        .HasForeignKey("DecisionCriterionId", "DecisionId")
+                        .HasPrincipalKey("Id", "DecisionId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Alternative");
+
+                    b.Navigation("Criterion");
+                });
+
+            modelBuilder.Entity("SmartDog.Domain.Models.DecisionCriterion", b =>
+                {
+                    b.HasOne("SmartDog.Domain.Models.Decision", "Decision")
+                        .WithMany("Criteria")
+                        .HasForeignKey("DecisionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Decision");
+                });
+
             modelBuilder.Entity("SmartDog.Domain.Models.Decision", b =>
                 {
                     b.Navigation("Alternatives");
+
+                    b.Navigation("Criteria");
+                });
+
+            modelBuilder.Entity("SmartDog.Domain.Models.DecisionAlternative", b =>
+                {
+                    b.Navigation("CriterionRatings");
+                });
+
+            modelBuilder.Entity("SmartDog.Domain.Models.DecisionCriterion", b =>
+                {
+                    b.Navigation("Ratings");
                 });
 #pragma warning restore 612, 618
         }

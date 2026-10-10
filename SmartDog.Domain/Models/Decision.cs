@@ -15,5 +15,8 @@ public class Decision
     public ICollection<DecisionAlternative> Alternatives { get; set; }
         = new List<DecisionAlternative>();
 
+    public ICollection<DecisionCriterion> Criteria { get; set; }
+        = new List<DecisionCriterion>();
+
     public byte[] RowVersion { get; set; } = Array.Empty<byte>();
 }

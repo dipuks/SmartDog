@@ -161,6 +161,40 @@ public class DecisionCommandServiceTests
     }
 
     [Fact]
+    public async Task UpdateAsync_ShouldRejectInvalidStatusTransition()
+    {
+        var id = Guid.NewGuid();
+        var decision = new Decision
+        {
+            Id = id,
+            Title = "Completed decision",
+            Status = DecisionStatuses.Completed
+        };
+        var repository = new Mock<IDecisionRepository>();
+        repository
+            .Setup(r => r.GetByIdAsync(id))
+            .ReturnsAsync(decision);
+        repository
+            .Setup(r => r.DeleteAsync(decision))
+            .Returns(Task.CompletedTask);
+        var service = new DecisionCommandService(
+            repository.Object,
+            Mock.Of<ILogger<DecisionCommandService>>(),
+            _cache);
+        var request = new UpdateDecisionRequest(
+            "Reopen decision",
+            null,
+            DecisionStatuses.InProgress,
+            new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 });
+
+        await Assert.ThrowsAsync<DecisionStatusTransitionException>(
+            () => service.UpdateAsync(id, request));
+
+        repository.Verify(r => r.Update(It.IsAny<Decision>()), Times.Never);
+        repository.Verify(r => r.SaveChangesAsync(), Times.Never);
+    }
+
+    [Fact]
     public async Task DeleteAsync_ShouldReturnFalse_WhenDecisionDoesNotExist()
     {
         // Arrange
@@ -172,6 +206,9 @@ public class DecisionCommandServiceTests
         repository
             .Setup(r => r.GetByIdAsync(id))
             .ReturnsAsync((Decision?)null);
+        repository
+            .Setup(r => r.DeleteAsync(It.IsAny<Decision>()))
+            .Returns(Task.CompletedTask);
 
         var logger = new Mock<
             ILogger<DecisionCommandService>>();
@@ -190,7 +227,7 @@ public class DecisionCommandServiceTests
         Assert.False(result);
 
         repository.Verify(
-            r => r.Delete(It.IsAny<Decision>()),
+            r => r.DeleteAsync(It.IsAny<Decision>()),
             Times.Never);
 
         repository.Verify(
@@ -237,7 +274,7 @@ public class DecisionCommandServiceTests
         Assert.True(result);
 
         repository.Verify(
-            r => r.Delete(decision),
+            r => r.DeleteAsync(decision),
             Times.Once);
 
         repository.Verify(

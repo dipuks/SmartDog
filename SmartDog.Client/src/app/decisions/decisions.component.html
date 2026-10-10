@@ -1,0 +1,92 @@
+<main class="page-shell">
+  <section class="page-heading">
+    <div>
+      <p class="eyebrow">Decision workspace</p>
+      <h1>Your decisions</h1>
+      <p class="muted">Compare options with criteria and weighted scores.</p>
+    </div>
+    <label class="filter">
+      <span>Filter by status</span>
+      <select [(ngModel)]="statusFilter" (ngModelChange)="filterChanged()">
+        <option value="">All statuses</option>
+        <option value="Draft">Draft</option>
+        <option value="Created">Created</option>
+        <option value="InProgress">In progress</option>
+        <option value="Completed">Completed</option>
+        <option value="Cancelled">Cancelled</option>
+      </select>
+    </label>
+    <label class="filter">
+      <span>Sort by</span>
+      <select [(ngModel)]="sortBy" (ngModelChange)="filterChanged()">
+        <option value="CreatedAt">Date created</option>
+        <option value="Title">Title</option>
+        <option value="Status">Status</option>
+      </select>
+    </label>
+    <label class="filter">
+      <span>Direction</span>
+      <select [(ngModel)]="sortDirection" (ngModelChange)="filterChanged()">
+        <option value="desc">Descending</option>
+        <option value="asc">Ascending</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="panel create-panel">
+    <div>
+      <h2>Start a decision</h2>
+      <p class="muted">Name the choice you need to make. You can add options and criteria next.</p>
+    </div>
+    <form (ngSubmit)="createDecision()">
+      <label for="decision-title">Title</label>
+      <input id="decision-title" name="title" [(ngModel)]="title" required minlength="3" maxlength="200" />
+      <label for="decision-description">Description <span class="muted">(optional)</span></label>
+      <textarea id="decision-description" name="description" [(ngModel)]="description" maxlength="2000" rows="2"></textarea>
+      @if (createError()) {
+        <p class="error-banner" role="alert">{{ createError() }}</p>
+      }
+      <button class="primary-button" type="submit" [disabled]="!title.trim() || creating">
+        {{ creating ? 'Creating…' : 'Create decision' }}
+      </button>
+    </form>
+  </section>
+
+  <section class="decision-section" aria-labelledby="decision-list-title">
+    <div class="section-heading">
+      <h2 id="decision-list-title">Recent decisions</h2>
+      @if (pageData()) {
+        <span class="muted">{{ pageData()!.totalCount }} total</span>
+      }
+    </div>
+    @if (error()) {
+      <p class="error-banner" role="alert">{{ error() }}</p>
+    }
+    @if (loading()) {
+      <p class="empty-state" role="status">Loading decisions…</p>
+    } @else if (pageData()?.items?.length) {
+      <div class="decision-grid">
+        @for (decision of pageData()!.items; track decision.id) {
+          <a class="decision-card" [routerLink]="['/decisions', decision.id]">
+            <div class="card-title">
+              <h3>{{ decision.title }}</h3>
+              <span class="status">{{ decision.status }}</span>
+            </div>
+            <p class="description">{{ decision.description || 'No description yet.' }}</p>
+            <span class="card-footer">
+              <time [attr.datetime]="decision.createdAt">{{ decision.createdAt | date:'mediumDate' }}</time>
+              <span>Open decision <span aria-hidden="true">→</span></span>
+            </span>
+          </a>
+        }
+      </div>
+      <nav class="pagination" aria-label="Decision pages">
+        <button type="button" class="secondary-button" (click)="changePage(-1)" [disabled]="page() <= 1">Previous</button>
+        <span>Page {{ page() }} of {{ pageCount() }}</span>
+        <button type="button" class="secondary-button" (click)="changePage(1)" [disabled]="page() >= pageCount()">Next</button>
+      </nav>
+    } @else if (!error()) {
+      <p class="empty-state">No decisions match this filter. Create one to get started.</p>
+    }
+  </section>
+</main>

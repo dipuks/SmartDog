@@ -16,6 +16,13 @@ public class SmartDogDbContext : DbContext
     public DbSet<DecisionAlternative> DecisionAlternatives
     => Set<DecisionAlternative>();
 
+    public DbSet<DecisionCriterion> DecisionCriteria
+        => Set<DecisionCriterion>();
+
+    public DbSet<DecisionAlternativeCriterionRating>
+        DecisionAlternativeCriterionRatings
+        => Set<DecisionAlternativeCriterionRating>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

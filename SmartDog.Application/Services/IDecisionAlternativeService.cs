@@ -4,7 +4,7 @@ namespace SmartDog.Application.Services;
 
 public interface IDecisionAlternativeService
 {
-    Task<IReadOnlyList<DecisionAlternativeDto>>
+    Task<IReadOnlyList<DecisionAlternativeDto>?>
         GetByDecisionIdAsync(Guid decisionId);
 
     Task<DecisionAlternativeDto?>

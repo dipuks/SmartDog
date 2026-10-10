@@ -12,13 +12,16 @@ public class DecisionsController : ControllerBase
 {
     private readonly IDecisionQueryService _decisionQueryService;
     private readonly IDecisionCommandService _decisionCommandService;
+    private readonly IDecisionScoringService _decisionScoringService;
 
     public DecisionsController(
         IDecisionQueryService decisionQueryService,
-        IDecisionCommandService decisionCommandService)
+        IDecisionCommandService decisionCommandService,
+        IDecisionScoringService decisionScoringService)
     {
         _decisionQueryService = decisionQueryService;
         _decisionCommandService = decisionCommandService;
+        _decisionScoringService = decisionScoringService;
     }
 
     [HttpPost]
@@ -61,6 +64,25 @@ public class DecisionsController : ControllerBase
             return NotFound();
 
         return Ok(decision);
+    }
+
+    [HttpGet("{id:guid}/results")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<DecisionResultDto>),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<IReadOnlyList<DecisionResultDto>>>
+        GetResults(Guid id)
+    {
+        var results = await _decisionScoringService.GetResultsAsync(id);
+
+        if (results is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(results);
     }
 
     [HttpPut("{id:guid}")]

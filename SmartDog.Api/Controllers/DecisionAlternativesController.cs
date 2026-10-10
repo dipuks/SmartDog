@@ -22,13 +22,14 @@ public class DecisionAlternativesController : ControllerBase
     [ProducesResponseType(
         typeof(IReadOnlyList<DecisionAlternativeDto>),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<IReadOnlyList<DecisionAlternativeDto>>>
         GetAlternatives(Guid decisionId)
     {
         var alternatives =
             await _service.GetByDecisionIdAsync(decisionId);
 
-        return Ok(alternatives);
+        return alternatives is null ? NotFound() : Ok(alternatives);
     }
 
     [HttpGet("{alternativeId:guid}")]
@@ -57,6 +58,7 @@ public class DecisionAlternativesController : ControllerBase
         typeof(DecisionAlternativeDto),
         StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<DecisionAlternativeDto>>
         CreateAlternative(
             Guid decisionId,
@@ -67,12 +69,17 @@ public class DecisionAlternativesController : ControllerBase
                 decisionId,
                 request);
 
+        if (alternative is null)
+        {
+            return NotFound();
+        }
+
         return CreatedAtAction(
             nameof(GetAlternative),
             new
             {
                 decisionId,
-                alternativeId = alternative!.Id
+                alternativeId = alternative.Id
             },
             alternative);
     }

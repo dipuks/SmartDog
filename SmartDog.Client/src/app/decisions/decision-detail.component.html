@@ -1,0 +1,160 @@
+<main class="page-shell">
+  <a class="back-link" routerLink="/decisions">← All decisions</a>
+  @if (loading()) {
+    <p class="empty-state" role="status">Loading decision…</p>
+  } @else if (error()) {
+    <p class="error-banner" role="alert">{{ error() }}</p>
+  } @else if (decision(); as current) {
+    <header class="page-heading">
+      <div>
+        <p class="eyebrow">Decision workspace</p>
+        <h1>{{ current.title }}</h1>
+        <p class="muted">{{ current.description || 'Add a description to clarify the decision.' }}</p>
+      </div>
+      <span class="status">{{ current.status }}</span>
+    </header>
+
+    <section class="panel">
+      <h2>Decision details</h2>
+      <form class="details-form" (ngSubmit)="saveDecision()">
+        <label for="edit-title">Title</label>
+        <input id="edit-title" name="editTitle" [(ngModel)]="title" required minlength="3" maxlength="200" />
+        <label for="edit-description">Description</label>
+        <textarea id="edit-description" name="editDescription" [(ngModel)]="description" maxlength="2000" rows="2"></textarea>
+        <label for="edit-status">Status</label>
+        <select id="edit-status" name="editStatus" [(ngModel)]="status">
+          @for (availableStatus of allowedStatuses(); track availableStatus) {
+            <option [value]="availableStatus">{{ availableStatus }}</option>
+          }
+        </select>
+        <button class="secondary-button" type="submit" [disabled]="saving() || !title.trim()">Save details</button>
+      </form>
+    </section>
+
+    <div class="workspace-grid">
+      <section class="panel">
+        <h2>Criteria and weights</h2>
+        <p class="muted">Weights should total 100. Each option needs one rating per criterion.</p>
+        @if (criteria().length) {
+          <ul class="data-list">
+            @for (criterion of criteria(); track criterion.id) {
+              <li><span>{{ criterion.name }}</span><strong>{{ criterion.weight }}%</strong><button class="remove-button" type="button" [disabled]="saving()" (click)="deleteCriterion(criterion)" [attr.aria-label]="'Remove ' + criterion.name">Remove</button></li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-inline">No criteria yet.</p>
+        }
+        <form class="inline-form" (ngSubmit)="addCriterion()">
+          <label for="criterion-name">Add criterion</label>
+          <input id="criterion-name" name="criterionName" [(ngModel)]="criterionName" placeholder="e.g. Cost" required maxlength="200" />
+          <label for="criterion-weight">Weight (%)</label>
+          <input id="criterion-weight" name="criterionWeight" type="number" [(ngModel)]="criterionWeight" min="0" max="100" step="0.01" required />
+          <button class="secondary-button" type="submit" [disabled]="saving() || !criterionName.trim() || criterionWeight === null || criterionWeight < 0 || criterionWeight > 100">Add criterion</button>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2>Alternatives</h2>
+        @if (alternatives().length) {
+          <ul class="data-list">
+            @for (alternative of alternatives(); track alternative.id) {
+              <li><span><strong>{{ alternative.name }}</strong>@if (alternative.description) { <small>{{ alternative.description }}</small> }</span><button class="remove-button" type="button" [disabled]="saving()" (click)="deleteAlternative(alternative)" [attr.aria-label]="'Remove ' + alternative.name">Remove</button></li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-inline">No alternatives yet.</p>
+        }
+        <form class="inline-form" (ngSubmit)="addAlternative()">
+          <label for="alternative-name">Add alternative</label>
+          <input id="alternative-name" name="alternativeName" [(ngModel)]="alternativeName" placeholder="Option name" required maxlength="200" />
+          <label for="alternative-description">Description <span class="muted">(optional)</span></label>
+          <input id="alternative-description" name="alternativeDescription" [(ngModel)]="alternativeDescription" maxlength="2000" />
+          <button class="secondary-button" type="submit" [disabled]="saving() || !alternativeName.trim()">Add alternative</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="panel rating-panel">
+      <div>
+        <h2>Rate alternatives</h2>
+        <p class="muted">Ratings use a 0–100 scale for each criterion.</p>
+      </div>
+      @if (alternatives().length && criteria().length) {
+        <div class="rating-table-wrap">
+          <table class="rating-table">
+            <caption class="visually-hidden">Ratings by alternative and criterion</caption>
+            <thead>
+              <tr>
+                <th scope="col">Alternative</th>
+                @for (criterion of criteria(); track criterion.id) {
+                  <th scope="col">{{ criterion.name }} <small>{{ criterion.weight }}%</small></th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (alternative of alternatives(); track alternative.id) {
+                <tr>
+                  <th scope="row">{{ alternative.name }}</th>
+                  @for (criterion of criteria(); track criterion.id) {
+                    <td>
+                      <button class="rating-cell" type="button" (click)="selectRating(alternative.id, criterion.id)" [attr.aria-label]="'Set ' + criterion.name + ' rating for ' + alternative.name">
+                        {{ currentRating(alternative.id, criterion.id) ?? 'Rate' }}
+                      </button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <form class="rating-form" (ngSubmit)="saveRating()">
+          <label for="rating-alternative">Alternative</label>
+          <select id="rating-alternative" name="ratingAlternative" [(ngModel)]="selectedAlternativeId" required>
+            <option value="">Choose an option</option>
+            @for (alternative of alternatives(); track alternative.id) {
+              <option [value]="alternative.id">{{ alternative.name }}</option>
+            }
+          </select>
+          <label for="rating-criterion">Criterion</label>
+          <select id="rating-criterion" name="ratingCriterion" [(ngModel)]="selectedCriterionId" required>
+            <option value="">Choose a criterion</option>
+            @for (criterion of criteria(); track criterion.id) {
+              <option [value]="criterion.id">{{ criterion.name }}</option>
+            }
+          </select>
+          <label for="rating-value">Rating</label>
+          <input id="rating-value" name="ratingValue" type="number" [(ngModel)]="rating" min="0" max="100" step="0.01" required />
+          <button class="primary-button" type="submit" [disabled]="saving() || !selectedAlternativeId || !selectedCriterionId || rating === null || rating < 0 || rating > 100">Save rating</button>
+        </form>
+      } @else {
+        <p class="empty-inline">Add at least one alternative and one criterion before rating.</p>
+      }
+    </section>
+
+    @if (actionMessage()) {
+      <p class="notice" role="status">{{ actionMessage() }}</p>
+    }
+
+    <section class="panel results-panel">
+      <div>
+        <p class="eyebrow">Weighted scoring</p>
+        <h2>Ranked results</h2>
+      </div>
+      @if (scoringMessage()) {
+        <p class="empty-state">{{ scoringMessage() }}</p>
+      } @else if (results().length) {
+        <ol class="results-list">
+          @for (result of results(); track result.alternativeId) {
+            <li>
+              <span class="rank">{{ result.rank }}</span>
+              <strong>{{ result.alternativeName }}</strong>
+              <span class="score">{{ result.score | number:'1.0-2' }}</span>
+            </li>
+          }
+        </ol>
+      } @else {
+        <p class="empty-inline">Add alternatives to see their scores.</p>
+      }
+    </section>
+  }
+</main>

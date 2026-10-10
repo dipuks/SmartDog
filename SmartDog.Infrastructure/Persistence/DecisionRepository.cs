@@ -42,8 +42,13 @@ public class DecisionRepository : IDecisionRepository
         _dbContext.Decisions.Update(decision);
     }
 
-    public void Delete(Decision decision)
+    public async Task DeleteAsync(Decision decision)
     {
+        var ratings = await _dbContext.DecisionAlternativeCriterionRatings
+            .Where(rating => rating.DecisionId == decision.Id)
+            .ToListAsync();
+
+        _dbContext.DecisionAlternativeCriterionRatings.RemoveRange(ratings);
         _dbContext.Decisions.Remove(decision);
     }
 

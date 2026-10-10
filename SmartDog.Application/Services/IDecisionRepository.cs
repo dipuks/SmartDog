@@ -14,7 +14,7 @@ public interface IDecisionRepository
 
     void Update(Decision decision);
 
-    void Delete(Decision decision);
+    Task DeleteAsync(Decision decision);
 
     Task SaveChangesAsync();
 }

@@ -1,0 +1,10 @@
+<header class="topbar">
+  <a class="brand" routerLink="/decisions" aria-label="SmartDog home">
+    <span class="brand-mark" aria-hidden="true">S</span>
+    <span>SmartDog</span>
+  </a>
+  @if (auth.isAuthenticated()) {
+    <button class="text-button" type="button" (click)="logout()">Sign out</button>
+  }
+</header>
+<router-outlet />

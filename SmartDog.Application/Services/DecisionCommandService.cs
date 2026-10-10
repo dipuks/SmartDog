@@ -73,6 +73,15 @@ public class DecisionCommandService : IDecisionCommandService
             return null;
         }
 
+        if (!DecisionStatuses.CanTransition(
+            decision.Status,
+            request.Status))
+        {
+            throw new DecisionStatusTransitionException(
+                decision.Status,
+                request.Status);
+        }
+
         decision.Title = request.Title;
         decision.Description = request.Description;
         decision.Status = request.Status;
@@ -113,7 +122,7 @@ public class DecisionCommandService : IDecisionCommandService
             return false;
         }
 
-        _repository.Delete(decision);
+        await _repository.DeleteAsync(decision);
 
         await _repository.SaveChangesAsync();
         _cache.Remove($"decision:{id}");

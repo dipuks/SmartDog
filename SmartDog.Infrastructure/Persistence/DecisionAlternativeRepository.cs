@@ -25,6 +25,17 @@ public class DecisionAlternativeRepository
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<DecisionAlternative>>
+        GetByDecisionIdWithRatingsAsync(Guid decisionId)
+    {
+        return await _dbContext.DecisionAlternatives
+            .AsNoTracking()
+            .Include(alternative => alternative.CriterionRatings)
+            .Where(alternative => alternative.DecisionId == decisionId)
+            .OrderBy(alternative => alternative.Name)
+            .ToListAsync();
+    }
+
     public async Task<DecisionAlternative?> GetByIdAsync(Guid id)
     {
         return await _dbContext.DecisionAlternatives
@@ -41,6 +52,39 @@ public class DecisionAlternativeRepository
             .FirstOrDefaultAsync(a =>
                 a.Id == id &&
                 a.DecisionId == decisionId);
+    }
+
+    public async Task<IReadOnlyList<DecisionAlternativeCriterionRating>>
+        GetRatingsByAlternativeIdAsync(
+            Guid decisionId,
+            Guid alternativeId)
+    {
+        return await _dbContext.DecisionAlternativeCriterionRatings
+            .AsNoTracking()
+            .Include(rating => rating.Criterion)
+            .Where(rating =>
+                rating.DecisionId == decisionId &&
+                rating.DecisionAlternativeId == alternativeId)
+            .OrderBy(rating => rating.Criterion!.Name)
+            .ToListAsync();
+    }
+
+    public async Task<DecisionAlternativeCriterionRating?> GetRatingAsync(
+        Guid decisionId,
+        Guid alternativeId,
+        Guid criterionId)
+    {
+        return await _dbContext.DecisionAlternativeCriterionRatings
+            .FirstOrDefaultAsync(rating =>
+                rating.DecisionId == decisionId &&
+                rating.DecisionAlternativeId == alternativeId &&
+                rating.DecisionCriterionId == criterionId);
+    }
+
+    public async Task AddRatingAsync(
+        DecisionAlternativeCriterionRating rating)
+    {
+        await _dbContext.DecisionAlternativeCriterionRatings.AddAsync(rating);
     }
 
     public async Task AddAsync(
