@@ -1,0 +1,26 @@
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Ll]ogs/
+[Tt]estResults/
+
+# Visual Studio and user-specific files
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Local secrets and environment-specific configuration
+.env
+.env.*
+!.env.example
+**/appsettings.*.json
+!**/appsettings.Development.json
+*.local.json
+secrets.json
+
+# Frontend dependencies/build output (if added later)
+node_modules/
+dist/
+coverage/

@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SmartDog.Api/SmartDog.Api.csproj" />
+  <Project Path="SmartDog.Application/SmartDog.Application.csproj" />
+  <Project Path="SmartDog.Domain/SmartDog.Domain.csproj" />
+  <Project Path="SmartDog.Infrastructure/SmartDog.Infrastructure.csproj" />
+  <Project Path="SmartDog.Tests/SmartDog.Tests.csproj" />
+</Solution>
