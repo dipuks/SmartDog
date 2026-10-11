@@ -1,63 +1,75 @@
 <main class="page-shell">
-  <section class="page-heading">
-    <div>
-      <p class="eyebrow">Decision workspace</p>
-      <h1>Your decisions</h1>
-      <p class="muted">Compare options with criteria and weighted scores.</p>
+  <section class="welcome-banner">
+    <div class="welcome-copy">
+      <p class="eyebrow">A clearer way to choose</p>
+      <h1>Make your next<br />decision with confidence.</h1>
+      <p class="muted">Lay out what matters, compare your options, and see the trade-offs clearly.</p>
     </div>
-    <label class="filter">
-      <span>Filter by status</span>
-      <select [(ngModel)]="statusFilter" (ngModelChange)="filterChanged()">
-        <option value="">All statuses</option>
-        <option value="Draft">Draft</option>
-        <option value="Created">Created</option>
-        <option value="InProgress">In progress</option>
-        <option value="Completed">Completed</option>
-        <option value="Cancelled">Cancelled</option>
-      </select>
-    </label>
-    <label class="filter">
-      <span>Sort by</span>
-      <select [(ngModel)]="sortBy" (ngModelChange)="filterChanged()">
-        <option value="CreatedAt">Date created</option>
-        <option value="Title">Title</option>
-        <option value="Status">Status</option>
-      </select>
-    </label>
-    <label class="filter">
-      <span>Direction</span>
-      <select [(ngModel)]="sortDirection" (ngModelChange)="filterChanged()">
-        <option value="desc">Descending</option>
-        <option value="asc">Ascending</option>
-      </select>
-    </label>
+    <img class="welcome-art" src="/smartdog-storyboard.jpg" alt="" aria-hidden="true" />
   </section>
 
-  <section class="panel create-panel">
-    <div>
-      <h2>Start a decision</h2>
-      <p class="muted">Name the choice you need to make. You can add options and criteria next.</p>
+  <section class="panel create-panel" aria-labelledby="create-title">
+    <div class="create-copy">
+      <span class="step-badge">01</span>
+      <div>
+        <h2 id="create-title">What are you deciding?</h2>
+        <p class="muted">Start with a name. You can add options and criteria next.</p>
+      </div>
     </div>
     <form (ngSubmit)="createDecision()">
-      <label for="decision-title">Title</label>
-      <input id="decision-title" name="title" [(ngModel)]="title" required minlength="3" maxlength="200" />
-      <label for="decision-description">Description <span class="muted">(optional)</span></label>
-      <textarea id="decision-description" name="description" [(ngModel)]="description" maxlength="2000" rows="2"></textarea>
+      <label class="visually-hidden" for="decision-title">Decision title</label>
+      <input id="decision-title" name="title" [(ngModel)]="title" placeholder="e.g. Choose a new place to live" required minlength="3" maxlength="200" />
+      <label class="visually-hidden" for="decision-description">Description, optional</label>
+      <textarea id="decision-description" name="description" [(ngModel)]="description" placeholder="Add a little context (optional)" maxlength="2000" rows="2"></textarea>
       @if (createError()) {
         <p class="error-banner" role="alert">{{ createError() }}</p>
       }
       <button class="primary-button" type="submit" [disabled]="!title.trim() || creating">
-        {{ creating ? 'Creating…' : 'Create decision' }}
+        {{ creating ? 'Creating…' : 'Create decision' }} <span aria-hidden="true">→</span>
       </button>
     </form>
   </section>
 
   <section class="decision-section" aria-labelledby="decision-list-title">
     <div class="section-heading">
-      <h2 id="decision-list-title">Recent decisions</h2>
+      <div>
+        <p class="eyebrow">Your workspace</p>
+        <h2 id="decision-list-title">Recent decisions</h2>
+      </div>
       @if (pageData()) {
-        <span class="muted">{{ pageData()!.totalCount }} total</span>
+        <span class="count-pill">{{ pageData()!.totalCount }} {{ pageData()!.totalCount === 1 ? 'decision' : 'decisions' }}</span>
       }
+    </div>
+    <div class="list-toolbar">
+    <p class="muted">Pick up where you left off, or sort and filter your workspace.</p>
+    <div class="filters">
+      <label class="filter">
+        <span>Status</span>
+        <select [(ngModel)]="statusFilter" (ngModelChange)="filterChanged()">
+          <option value="">All statuses</option>
+          <option value="Draft">Draft</option>
+          <option value="Created">Created</option>
+          <option value="InProgress">In progress</option>
+          <option value="Completed">Completed</option>
+          <option value="Cancelled">Cancelled</option>
+        </select>
+      </label>
+      <label class="filter">
+        <span>Sort by</span>
+        <select [(ngModel)]="sortBy" (ngModelChange)="filterChanged()">
+          <option value="CreatedAt">Date created</option>
+          <option value="Title">Title</option>
+          <option value="Status">Status</option>
+        </select>
+      </label>
+      <label class="filter">
+        <span>Order</span>
+        <select [(ngModel)]="sortDirection" (ngModelChange)="filterChanged()">
+          <option value="desc">Newest first</option>
+          <option value="asc">Oldest first</option>
+        </select>
+      </label>
+    </div>
     </div>
     @if (error()) {
       <p class="error-banner" role="alert">{{ error() }}</p>
@@ -69,13 +81,14 @@
         @for (decision of pageData()!.items; track decision.id) {
           <a class="decision-card" [routerLink]="['/decisions', decision.id]">
             <div class="card-title">
-              <h3>{{ decision.title }}</h3>
-              <span class="status">{{ decision.status }}</span>
+              <span class="card-icon" aria-hidden="true">✳</span>
+              <span class="status" [class.status-completed]="decision.status === 'Completed'" [class.status-cancelled]="decision.status === 'Cancelled'" [class.status-inprogress]="decision.status === 'InProgress'">{{ decision.status === 'InProgress' ? 'In progress' : decision.status }}</span>
             </div>
+            <h3>{{ decision.title }}</h3>
             <p class="description">{{ decision.description || 'No description yet.' }}</p>
             <span class="card-footer">
-              <time [attr.datetime]="decision.createdAt">{{ decision.createdAt | date:'mediumDate' }}</time>
-              <span>Open decision <span aria-hidden="true">→</span></span>
+              <time [attr.datetime]="decision.createdAt"><span aria-hidden="true">◷</span> {{ decision.createdAt | date:'mediumDate' }}</time>
+              <span>Open <span aria-hidden="true">↗</span></span>
             </span>
           </a>
         }
@@ -86,7 +99,16 @@
         <button type="button" class="secondary-button" (click)="changePage(1)" [disabled]="page() >= pageCount()">Next</button>
       </nav>
     } @else if (!error()) {
-      <p class="empty-state">No decisions match this filter. Create one to get started.</p>
+      <div class="empty-state">
+        <span class="empty-icon" aria-hidden="true">✳</span>
+        @if (statusFilter) {
+          <h3>No decisions match this filter</h3>
+          <p>Try a different status or clear the filter to see your other decisions.</p>
+        } @else {
+          <h3>No decisions yet</h3>
+          <p>When you start a new decision, it will show up here. Give your next big choice a little structure.</p>
+        }
+      </div>
     }
   </section>
 </main>

@@ -72,4 +72,20 @@ describe('DecisionApiService', () => {
     expect(request.request.method).toBe('DELETE');
     request.flush(null);
   });
+
+  it('sends a question to the decision assistant', () => {
+    service
+      .askAssistant('decision-id', 'Suggest some criteria', 'sk-test-key')
+      .subscribe();
+
+    const request = http.expectOne(
+      `${environment.apiBaseUrl}/decisions/decision-id/assistant`,
+    );
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      question: 'Suggest some criteria',
+    });
+    expect(request.request.headers.get('X-OpenAI-Api-Key')).toBe('sk-test-key');
+    request.flush({ answer: 'Consider cost and reliability.' });
+  });
 });

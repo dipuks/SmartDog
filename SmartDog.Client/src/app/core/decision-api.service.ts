@@ -5,6 +5,7 @@ import {
   Decision,
   DecisionAlternative,
   DecisionAlternativeRating,
+  DecisionAssistantResponse,
   DecisionCriterion,
   DecisionResult,
   PagedResult,
@@ -109,6 +110,14 @@ export class DecisionApiService {
   getResults(decisionId: string) {
     return this.http.get<DecisionResult[]>(
       `${this.baseUrl}/${decisionId}/results`,
+    );
+  }
+
+  askAssistant(decisionId: string, question: string, apiKey: string) {
+    return this.http.post<DecisionAssistantResponse>(
+      `${this.baseUrl}/${decisionId}/assistant`,
+      { question },
+      { headers: { 'X-OpenAI-Api-Key': apiKey } },
     );
   }
 }

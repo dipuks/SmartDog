@@ -4,6 +4,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import { AiSettingsService } from '../core/ai-settings.service';
 import { DecisionApiService } from '../core/decision-api.service';
 import {
   Decision,
@@ -21,6 +22,7 @@ import {
 })
 export class DecisionDetailComponent implements OnInit {
   private readonly api = inject(DecisionApiService);
+  private readonly aiSettings = inject(AiSettingsService);
   private readonly route = inject(ActivatedRoute);
 
   protected readonly decision = signal<Decision | null>(null);
@@ -35,6 +37,12 @@ export class DecisionDetailComponent implements OnInit {
   protected readonly scoringMessage = signal('');
   protected readonly saving = signal(false);
   protected readonly actionMessage = signal('');
+  protected readonly assistantLoading = signal(false);
+  protected readonly assistantAnswer = signal('');
+  protected readonly assistantError = signal('');
+  protected readonly assistantSetupMessage = signal('');
+  protected assistantQuestion = '';
+  protected draftApiKey = '';
   protected title = '';
   protected description = '';
   protected status = '';
@@ -132,6 +140,76 @@ export class DecisionDetailComponent implements OnInit {
       default:
         return [];
     }
+  }
+
+  protected totalWeight(): number {
+    const total = this.criteria().reduce(
+      (sum, criterion) => sum + criterion.weight,
+      0,
+    );
+    return Math.round(total * 100) / 100;
+  }
+
+  protected assistantConnected(): boolean {
+    return this.aiSettings.hasApiKey();
+  }
+
+  protected connectAssistant(): void {
+    if (!this.aiSettings.setApiKey(this.draftApiKey)) {
+      this.assistantSetupMessage.set(
+        'Enter a valid OpenAI API key (10 to 256 characters).',
+      );
+      return;
+    }
+
+    this.draftApiKey = '';
+    this.assistantSetupMessage.set(
+      'Your key is ready for this browser session. It is not saved to your account or browser storage.',
+    );
+    this.assistantError.set('');
+  }
+
+  protected disconnectAssistant(): void {
+    this.aiSettings.clear();
+    this.assistantAnswer.set('');
+    this.assistantError.set('');
+    this.assistantSetupMessage.set('Your key has been cleared from memory.');
+  }
+
+  protected askAssistant(prompt?: string): void {
+    const decision = this.decision();
+    if (prompt) {
+      this.assistantQuestion = prompt;
+    }
+    const question = this.assistantQuestion.trim();
+    const apiKey = this.aiSettings.getApiKey();
+    if (!decision || question.length < 3 || this.assistantLoading()) {
+      return;
+    }
+    if (!apiKey) {
+      this.assistantError.set('Add your OpenAI API key to use the assistant.');
+      return;
+    }
+
+    this.assistantLoading.set(true);
+    this.assistantError.set('');
+    this.assistantAnswer.set('');
+    this.api.askAssistant(decision.id, question, apiKey).subscribe({
+      next: ({ answer }) => {
+        this.assistantAnswer.set(answer);
+        this.assistantLoading.set(false);
+      },
+      error: (error: unknown) => {
+        this.assistantLoading.set(false);
+        this.assistantError.set(
+          error instanceof HttpErrorResponse && error.status === 400
+            ? 'The OpenAI key was not accepted. Check the key and try again.'
+            : error instanceof HttpErrorResponse && error.status === 429
+              ? 'You have reached the assistant usage limit. Try again later.'
+              : 'The assistant could not respond right now. Please try again.',
+        );
+      },
+    });
   }
 
   protected addAlternative(): void {

@@ -36,4 +36,27 @@ public class AuthController : ControllerBase
 
         return Ok(result);
     }
+
+    [EnableRateLimiting("register")]
+    [AllowAnonymous]
+    [HttpPost("register")]
+    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
+    public async Task<ActionResult<LoginResponse>> Register(RegisterRequest request)
+    {
+        var result = await _authenticationService.RegisterAsync(request);
+        if (result is null)
+        {
+            return Conflict(new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Username is unavailable",
+                Detail = "Choose a different username and try again."
+            });
+        }
+
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
 }

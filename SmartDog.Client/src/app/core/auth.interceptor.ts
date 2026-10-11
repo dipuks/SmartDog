@@ -2,10 +2,12 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
+import { AiSettingsService } from './ai-settings.service';
 import { AuthService } from './auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const auth = inject(AuthService);
+  const aiSettings = inject(AiSettingsService);
   const router = inject(Router);
   const token = auth.token();
   const authenticatedRequest = token
@@ -20,6 +22,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         !request.url.endsWith('/auth/login')
       ) {
         auth.logout();
+        aiSettings.clear();
         void router.navigate(['/login']);
       }
 

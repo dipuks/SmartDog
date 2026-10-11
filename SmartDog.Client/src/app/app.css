@@ -1,6 +1,10 @@
 :host { display: block; min-height: 100vh; }
-.topbar { display: flex; height: 4.5rem; align-items: center; justify-content: space-between; padding: 0 max(1rem, calc((100vw - 70rem) / 2)); border-bottom: 1px solid var(--line); background: var(--surface); }
-.brand { display: inline-flex; align-items: center; gap: .65rem; color: var(--ink); font-size: 1.1rem; font-weight: 850; letter-spacing: -.03em; text-decoration: none; }
-.brand-mark { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: .65rem; background: var(--accent); color: #fff; font-size: 1rem; }
-.text-button { padding: .5rem .7rem; border: 0; background: transparent; color: var(--muted); font-weight: 700; cursor: pointer; }
-.text-button:hover { color: var(--accent-dark); }
+.topbar { position: sticky; z-index: 5; top: 0; display: flex; height: 4.75rem; align-items: center; justify-content: space-between; padding: 0 max(1rem, calc((100vw - 74rem) / 2)); border-bottom: 1px solid rgb(234 223 209 / 86%); background: linear-gradient(90deg, #fff 0%, #fffdf9 68%, #fff7e9 100%); box-shadow: 0 3px 15px rgb(77 48 20 / 5%); backdrop-filter: blur(16px); }
+.brand { display: inline-flex; height: 4.5rem; align-items: center; color: var(--ink); text-decoration: none; }
+.brand-logo { display: block; width: 6.5rem; max-height: 4.25rem; object-fit: contain; }
+.topbar-actions { display: flex; align-items: center; gap: 1.2rem; }
+.topbar-link { padding: .55rem .75rem; border-radius: .6rem; color: var(--muted); font-size: .9rem; font-weight: 700; text-decoration: none; transition: color .15s ease, background .15s ease; }
+.topbar-link:hover { color: var(--accent-dark); }
+.topbar-link:hover { background: #fff0d9; }
+.text-button { padding: .6rem .9rem; border: 1px solid var(--line); border-radius: .65rem; background: #fff; color: var(--muted); font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.text-button:hover { border-color: #dfbd8e; background: #fff7ea; color: var(--accent-dark); }

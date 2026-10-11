@@ -1,10 +1,12 @@
 <header class="topbar">
   <a class="brand" routerLink="/decisions" aria-label="SmartDog home">
-    <span class="brand-mark" aria-hidden="true">S</span>
-    <span>SmartDog</span>
+    <img class="brand-logo" src="/smartdog-logo.jpg" alt="SmartDog" />
   </a>
   @if (auth.isAuthenticated()) {
-    <button class="text-button" type="button" (click)="logout()">Sign out</button>
+    <nav class="topbar-actions" aria-label="Main navigation">
+      <a class="topbar-link" routerLink="/decisions">My decisions</a>
+      <button class="text-button" type="button" (click)="logout()">Sign out</button>
+    </nav>
   }
 </header>
 <router-outlet />

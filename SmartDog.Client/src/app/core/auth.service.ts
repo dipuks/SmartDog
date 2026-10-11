@@ -22,12 +22,16 @@ export class AuthService {
         username,
         password,
       })
-      .pipe(
-        tap((response) => {
-          sessionStorage.setItem(this.storageKey, response.accessToken);
-          this.currentToken.set(response.accessToken);
-        }),
-      );
+      .pipe(tap((response) => this.storeToken(response)));
+  }
+
+  register(username: string, password: string) {
+    return this.http
+      .post<LoginResponse>(`${environment.apiBaseUrl}/auth/register`, {
+        username,
+        password,
+      })
+      .pipe(tap((response) => this.storeToken(response)));
   }
 
   logout(): void {
@@ -39,5 +43,10 @@ export class AuthService {
     return typeof sessionStorage === 'undefined'
       ? null
       : sessionStorage.getItem(this.storageKey);
+  }
+
+  private storeToken(response: LoginResponse): void {
+    sessionStorage.setItem(this.storageKey, response.accessToken);
+    this.currentToken.set(response.accessToken);
   }
 }

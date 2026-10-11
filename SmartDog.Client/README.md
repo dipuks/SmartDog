@@ -1,6 +1,6 @@
 # SmartDog Client
 
-Strict-mode Angular client for the SmartDog API. It includes sign-in, protected decision pages, decision filtering/sorting/pagination, decision status and description updates, alternative and criterion management, ratings, and weighted results.
+Strict-mode Angular client for the SmartDog API. It includes sign-in and account registration, protected decision pages, decision filtering/sorting/pagination, decision status and description updates, alternative and criterion management, ratings, weighted results, and an optional AI decision assistant. Users can enter their own OpenAI API key in the assistant UI. The key stays in client memory only and is sent to the API over HTTPS with assistant requests; it is not persisted in browser storage. See the repository root README for data handling.
 
 ## Prerequisites
 

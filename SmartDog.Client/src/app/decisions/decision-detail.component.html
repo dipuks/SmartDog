@@ -1,5 +1,5 @@
 <main class="page-shell">
-  <a class="back-link" routerLink="/decisions">← All decisions</a>
+  <a class="back-link" routerLink="/decisions"><span aria-hidden="true">←</span> All decisions</a>
   @if (loading()) {
     <p class="empty-state" role="status">Loading decision…</p>
   } @else if (error()) {
@@ -7,15 +7,73 @@
   } @else if (decision(); as current) {
     <header class="page-heading">
       <div>
-        <p class="eyebrow">Decision workspace</p>
+        <p class="eyebrow">Your decision workspace</p>
         <h1>{{ current.title }}</h1>
         <p class="muted">{{ current.description || 'Add a description to clarify the decision.' }}</p>
       </div>
-      <span class="status">{{ current.status }}</span>
+      <span class="status" [class.status-completed]="current.status === 'Completed'" [class.status-cancelled]="current.status === 'Cancelled'" [class.status-inprogress]="current.status === 'InProgress'">{{ current.status === 'InProgress' ? 'In progress' : current.status }}</span>
     </header>
 
+    <section class="assistant-panel" aria-labelledby="assistant-title">
+      <div class="assistant-heading">
+        <span class="assistant-icon" aria-hidden="true">✦</span>
+        <div>
+          <p class="eyebrow">Your thinking partner</p>
+          <h2 id="assistant-title">Decision assistant</h2>
+          <p class="muted">Get ideas and perspective. Your ratings and final decision always stay yours.</p>
+        </div>
+      </div>
+      <div class="assistant-key-panel">
+        @if (assistantConnected()) {
+          <div class="assistant-key-status">
+            <span class="connection-dot" aria-hidden="true"></span>
+            <span><strong>OpenAI connected</strong><small>Key held in memory for this browser session</small></span>
+            <button class="remove-button" type="button" (click)="disconnectAssistant()">Clear key</button>
+          </div>
+        } @else {
+          <p class="key-intro">Add your own OpenAI API key to turn on AI suggestions. SmartDog does not store it.</p>
+          <form class="key-form" (ngSubmit)="connectAssistant()">
+            <label class="visually-hidden" for="openai-key">OpenAI API key</label>
+            <input id="openai-key" name="openaiKey" type="password" [(ngModel)]="draftApiKey" maxlength="256" autocomplete="off" placeholder="Paste your OpenAI API key" />
+            <button class="secondary-button" type="submit" [disabled]="draftApiKey.trim().length < 10">Use for this session</button>
+          </form>
+          <p class="key-disclosure">Your key stays in browser memory and is cleared when you refresh, close the tab, or sign out. It is sent to the SmartDog API over HTTPS and forwarded to OpenAI for your request. SmartDog does not save it.</p>
+        }
+        @if (assistantSetupMessage()) {
+          <p class="key-message" role="status">{{ assistantSetupMessage() }}</p>
+        }
+      </div>
+      <div class="prompt-chips" aria-label="Suggested questions">
+        <button class="prompt-chip" type="button" [disabled]="!assistantConnected() || assistantLoading()" (click)="askAssistant('Suggest a balanced set of practical criteria and weights for this decision. Explain why each matters.')">Suggest criteria</button>
+        <button class="prompt-chip" type="button" [disabled]="!assistantConnected() || assistantLoading()" (click)="askAssistant('Suggest a few realistic alternatives I may not have considered.')">Explore options</button>
+        <button class="prompt-chip" type="button" [disabled]="!assistantConnected() || assistantLoading()" (click)="askAssistant('Explain the current weighted ranking, its strongest trade-offs, and any important missing information.')">Explain results</button>
+      </div>
+      <form class="assistant-form" (ngSubmit)="askAssistant()">
+        <label class="visually-hidden" for="assistant-question">Ask about this decision</label>
+        <input id="assistant-question" name="assistantQuestion" [(ngModel)]="assistantQuestion" maxlength="1000" [disabled]="!assistantConnected()" placeholder="Ask anything about this decision…" />
+        <button class="primary-button" type="submit" [disabled]="!assistantConnected() || assistantLoading() || !assistantQuestion.trim()">
+          {{ assistantLoading() ? 'Thinking…' : 'Ask assistant' }} <span aria-hidden="true">↗</span>
+        </button>
+      </form>
+      @if (assistantError()) {
+        <p class="assistant-error" role="alert">{{ assistantError() }}</p>
+      }
+      @if (assistantAnswer()) {
+        <div class="assistant-answer" aria-live="polite">
+          <strong>SmartDog AI</strong>
+          <p>{{ assistantAnswer() }}</p>
+        </div>
+      }
+      <p class="assistant-disclosure">AI responses can be wrong. When you ask a question, the decision’s details and your question are sent to OpenAI. Do not include sensitive information.</p>
+    </section>
+
     <section class="panel">
-      <h2>Decision details</h2>
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">The question</p>
+          <h2>Decision details</h2>
+        </div>
+      </div>
       <form class="details-form" (ngSubmit)="saveDecision()">
         <label for="edit-title">Title</label>
         <input id="edit-title" name="editTitle" [(ngModel)]="title" required minlength="3" maxlength="200" />
@@ -33,8 +91,14 @@
 
     <div class="workspace-grid">
       <section class="panel">
-        <h2>Criteria and weights</h2>
-        <p class="muted">Weights should total 100. Each option needs one rating per criterion.</p>
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">What matters most</p>
+            <h2>Criteria &amp; weights</h2>
+          </div>
+          <span class="weight-total" [class.weight-valid]="totalWeight() === 100">{{ totalWeight() }}%</span>
+        </div>
+        <p class="muted">Weights need to total 100%. Each option needs a rating for every criterion.</p>
         @if (criteria().length) {
           <ul class="data-list">
             @for (criterion of criteria(); track criterion.id) {
@@ -54,7 +118,13 @@
       </section>
 
       <section class="panel">
-        <h2>Alternatives</h2>
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Your options</p>
+            <h2>Alternatives</h2>
+          </div>
+          <span class="count-pill">{{ alternatives().length }}</span>
+        </div>
         @if (alternatives().length) {
           <ul class="data-list">
             @for (alternative of alternatives(); track alternative.id) {
@@ -77,7 +147,7 @@
     <section class="panel rating-panel">
       <div>
         <h2>Rate alternatives</h2>
-        <p class="muted">Ratings use a 0–100 scale for each criterion.</p>
+        <p class="muted">Give each option a score from 0 to 100 for what matters to you.</p>
       </div>
       @if (alternatives().length && criteria().length) {
         <div class="rating-table-wrap">
@@ -85,7 +155,7 @@
             <caption class="visually-hidden">Ratings by alternative and criterion</caption>
             <thead>
               <tr>
-                <th scope="col">Alternative</th>
+                <th class="sticky-column" scope="col">Alternative</th>
                 @for (criterion of criteria(); track criterion.id) {
                   <th scope="col">{{ criterion.name }} <small>{{ criterion.weight }}%</small></th>
                 }
@@ -94,7 +164,7 @@
             <tbody>
               @for (alternative of alternatives(); track alternative.id) {
                 <tr>
-                  <th scope="row">{{ alternative.name }}</th>
+                  <th class="sticky-column" scope="row">{{ alternative.name }}</th>
                   @for (criterion of criteria(); track criterion.id) {
                     <td>
                       <button class="rating-cell" type="button" (click)="selectRating(alternative.id, criterion.id)" [attr.aria-label]="'Set ' + criterion.name + ' rating for ' + alternative.name">
@@ -137,8 +207,8 @@
 
     <section class="panel results-panel">
       <div>
-        <p class="eyebrow">Weighted scoring</p>
-        <h2>Ranked results</h2>
+        <p class="eyebrow">The numbers, made clear</p>
+        <h2>Weighted results</h2>
       </div>
       @if (scoringMessage()) {
         <p class="empty-state">{{ scoringMessage() }}</p>
@@ -147,8 +217,11 @@
           @for (result of results(); track result.alternativeId) {
             <li>
               <span class="rank">{{ result.rank }}</span>
-              <strong>{{ result.alternativeName }}</strong>
-              <span class="score">{{ result.score | number:'1.0-2' }}</span>
+              <div class="result-copy">
+                <strong>{{ result.alternativeName }}</strong>
+                <span class="result-track"><span class="result-fill" [style.width.%]="result.score"></span></span>
+              </div>
+              <span class="score">{{ result.score | number:'1.0-2' }}<small>/100</small></span>
             </li>
           }
         </ol>

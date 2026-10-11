@@ -53,4 +53,25 @@ describe('AuthService', () => {
     expect(authenticatedService.isAuthenticated()).toBe(false);
     expect(sessionStorage.getItem('smartdog.accessToken')).toBeNull();
   });
+
+  it('registers a user and stores the returned sign-in token', () => {
+    service.register('new_user', 'long-password').subscribe();
+
+    const request = http.expectOne(`${environment.apiBaseUrl}/auth/register`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      username: 'new_user',
+      password: 'long-password',
+    });
+    request.flush({
+      accessToken: 'created-user-token',
+      expiresAtUtc: '2026-10-10T23:00:00Z',
+    });
+
+    expect(service.isAuthenticated()).toBe(true);
+    expect(service.token()).toBe('created-user-token');
+    expect(sessionStorage.getItem('smartdog.accessToken')).toBe(
+      'created-user-token',
+    );
+  });
 });

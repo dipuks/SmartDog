@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using SmartDog.Application.Configuration;
 using SmartDog.Application.DTOs;
 using SmartDog.Domain.Models;
+using System.ComponentModel.DataAnnotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -36,7 +37,7 @@ public class AuthenticationService : IAuthenticationService
     {
         var user =
             await _userRepository.GetByUsernameAsync(
-                request.Username);
+                request.Username.Trim());
 
         if (user is null)
         {
@@ -121,5 +122,31 @@ public class AuthenticationService : IAuthenticationService
         return new LoginResponse(
             accessToken,
             expiresAtUtc);
+    }
+
+    public async Task<LoginResponse?> RegisterAsync(RegisterRequest request)
+    {
+        var username = request.Username.Trim();
+        if (await _userRepository.GetByUsernameAsync(username) is not null)
+        {
+            return null;
+        }
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = username,
+            Role = "User"
+        };
+        user.PasswordHash = _passwordHasher.HashPassword(
+            user,
+            request.Password);
+
+        if (!await _userRepository.CreateAsync(user))
+        {
+            return null;
+        }
+
+        return await LoginAsync(new LoginRequest(username, request.Password));
     }
 }

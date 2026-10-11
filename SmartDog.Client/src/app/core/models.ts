@@ -46,3 +46,7 @@ export interface DecisionAlternativeRating {
   criterionName: string;
   rating: number;
 }
+
+export interface DecisionAssistantResponse {
+  answer: string;
+}
