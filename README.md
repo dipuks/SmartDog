@@ -92,3 +92,7 @@ GitHub Actions runs a .NET restore/build/test job and an Angular install/build/t
 ## Current scope
 
 The API supports decisions, alternatives, authentication, criteria, alternative ratings, weighted results, status transitions, and an optional AI assistant. The Angular client supports these decision workflows. Azure deployment, production identity, and a production API reverse proxy are not configured in this repository.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
