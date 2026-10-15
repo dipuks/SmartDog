@@ -9,23 +9,26 @@ public class DecisionScoringService : IDecisionScoringService
     private readonly IDecisionCriterionRepository _criterionRepository;
     private readonly IDecisionAlternativeRepository _alternativeRepository;
     private readonly IDecisionScoringEngine _scoringEngine;
+    private readonly ICurrentUser _currentUser;
 
     public DecisionScoringService(
         IDecisionRepository decisionRepository,
         IDecisionCriterionRepository criterionRepository,
         IDecisionAlternativeRepository alternativeRepository,
-        IDecisionScoringEngine scoringEngine)
+        IDecisionScoringEngine scoringEngine,
+        ICurrentUser currentUser)
     {
         _decisionRepository = decisionRepository;
         _criterionRepository = criterionRepository;
         _alternativeRepository = alternativeRepository;
         _scoringEngine = scoringEngine;
+        _currentUser = currentUser;
     }
 
     public async Task<IReadOnlyList<DecisionResultDto>?> GetResultsAsync(
         Guid decisionId)
     {
-        if (await _decisionRepository.GetByIdAsync(decisionId) is null)
+        if (!await _decisionRepository.ExistsAsync(decisionId, _currentUser.RequireUserId()))
         {
             return null;
         }

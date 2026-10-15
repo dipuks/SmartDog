@@ -9,13 +9,16 @@ public class DecisionQueryService : IDecisionQueryService
 {
     private readonly IDecisionRepository _repository;
     private readonly IMemoryCache _cache;
+    private readonly ICurrentUser _currentUser;
 
     public DecisionQueryService(
         IDecisionRepository repository,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _cache = cache;
+        _currentUser = currentUser;
     }
 
     public async Task<PagedResult<DecisionDto>> GetAllAsync(
@@ -29,7 +32,7 @@ public class DecisionQueryService : IDecisionQueryService
             ? 20
             : Math.Min(request.PageSize, 100);
 
-        var query = _repository.Query();
+        var query = _repository.Query(_currentUser.RequireUserId());
 
         // -------------------------
         // Filtering
@@ -102,14 +105,15 @@ public class DecisionQueryService : IDecisionQueryService
 
     public async Task<DecisionDto?> GetByIdAsync(Guid id)
     {
-        var cacheKey = $"decision:{id}";
+        var ownerId = _currentUser.RequireUserId();
+        var cacheKey = DecisionCacheKeys.Decision(ownerId, id);
 
         if (_cache.TryGetValue(cacheKey, out DecisionDto? cachedDecision))
         {
             return cachedDecision;
         }
 
-        var decision = await _repository.GetByIdAsync(id);
+        var decision = await _repository.GetByIdAsync(id, ownerId);
 
         if (decision is null)
         {

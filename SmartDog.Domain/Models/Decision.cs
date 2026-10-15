@@ -12,6 +12,13 @@ public class Decision
 
     public string Status { get; set; } = string.Empty;
 
+    /// <summary>
+    /// The user who created the decision. Only that user can read or change it, its criteria, alternatives, ratings,
+    /// results and assistant answers. Null only for decisions created before ownership existed: those are visible to
+    /// nobody until an owner is assigned (see the README).
+    /// </summary>
+    public Guid? OwnerId { get; set; }
+
     public ICollection<DecisionAlternative> Alternatives { get; set; }
         = new List<DecisionAlternative>();
 

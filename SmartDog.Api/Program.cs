@@ -7,6 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.RateLimiting;
 using SmartDog.Api.Middleware;
+using SmartDog.Api.Security;
 using SmartDog.Api.Services;
 using SmartDog.Api.Workers;
 using SmartDog.Domain.Engines;
@@ -20,6 +21,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ConcurrencyExceptionHandler>();
+builder.Services.AddExceptionHandler<MissingUserExceptionHandler>();
+
+// Every decision read or write is scoped to the signed-in user (the JWT subject).
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
 builder.Services.AddDbContext<SmartDogDbContext>(options =>
     options.UseSqlServer(
@@ -228,3 +234,6 @@ record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }
+
+/// <summary>Exposed for integration tests (WebApplicationFactory).</summary>
+public partial class Program;

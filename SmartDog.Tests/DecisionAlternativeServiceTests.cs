@@ -14,11 +14,12 @@ public class DecisionAlternativeServiceTests
         var alternatives = new Mock<IDecisionAlternativeRepository>();
         var decisions = new Mock<IDecisionRepository>();
         decisions
-            .Setup(repository => repository.GetByIdAsync(decisionId))
-            .ReturnsAsync((Decision?)null);
+            .Setup(repository => repository.ExistsAsync(decisionId, TestCurrentUser.OwnerId))
+            .ReturnsAsync(false);
         var service = new DecisionAlternativeService(
             alternatives.Object,
-            decisions.Object);
+            decisions.Object,
+            TestCurrentUser.Owner);
 
         var result = await service.GetByDecisionIdAsync(decisionId);
 
@@ -35,11 +36,12 @@ public class DecisionAlternativeServiceTests
         var alternatives = new Mock<IDecisionAlternativeRepository>();
         var decisions = new Mock<IDecisionRepository>();
         decisions
-            .Setup(repository => repository.GetByIdAsync(decisionId))
-            .ReturnsAsync((Decision?)null);
+            .Setup(repository => repository.ExistsAsync(decisionId, TestCurrentUser.OwnerId))
+            .ReturnsAsync(false);
         var service = new DecisionAlternativeService(
             alternatives.Object,
-            decisions.Object);
+            decisions.Object,
+            TestCurrentUser.Owner);
 
         var result = await service.CreateAsync(
             decisionId,

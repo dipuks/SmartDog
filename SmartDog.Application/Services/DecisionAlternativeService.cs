@@ -8,19 +8,26 @@ public class DecisionAlternativeService
 {
     private readonly IDecisionAlternativeRepository _repository;
     private readonly IDecisionRepository _decisionRepository;
+    private readonly ICurrentUser _currentUser;
 
     public DecisionAlternativeService(
         IDecisionAlternativeRepository repository,
-        IDecisionRepository decisionRepository)
+        IDecisionRepository decisionRepository,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _decisionRepository = decisionRepository;
+        _currentUser = currentUser;
     }
+
+    /// <summary>Every operation first checks that the decision belongs to the signed-in user.</summary>
+    private Task<bool> OwnsDecisionAsync(Guid decisionId) =>
+        _decisionRepository.ExistsAsync(decisionId, _currentUser.RequireUserId());
 
     public async Task<IReadOnlyList<DecisionAlternativeDto>?>
         GetByDecisionIdAsync(Guid decisionId)
     {
-        if (await _decisionRepository.GetByIdAsync(decisionId) is null)
+        if (!await OwnsDecisionAsync(decisionId))
         {
             return null;
         }
@@ -38,6 +45,11 @@ public class DecisionAlternativeService
             Guid decisionId,
             Guid alternativeId)
     {
+        if (!await OwnsDecisionAsync(decisionId))
+        {
+            return null;
+        }
+
         var alternative =
             await _repository.GetByIdAndDecisionIdAsync(
                 alternativeId,
@@ -53,7 +65,7 @@ public class DecisionAlternativeService
             Guid decisionId,
             CreateDecisionAlternativeRequest request)
     {
-        if (await _decisionRepository.GetByIdAsync(decisionId) is null)
+        if (!await OwnsDecisionAsync(decisionId))
         {
             return null;
         }
@@ -79,6 +91,9 @@ public class DecisionAlternativeService
             Guid alternativeId,
             UpdateDecisionAlternativeRequest request)
     {
+        if (!await OwnsDecisionAsync(decisionId))
+            return null;
+
         var alternative =
             await _repository.GetByIdAndDecisionIdAsync(
                 alternativeId,
@@ -102,6 +117,9 @@ public class DecisionAlternativeService
         Guid decisionId,
         Guid alternativeId)
     {
+        if (!await OwnsDecisionAsync(decisionId))
+            return false;
+
         var alternative =
             await _repository.GetByIdAndDecisionIdAsync(
                 alternativeId,

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using SmartDog.Api.Services;
+using SmartDog.Application.Services;
 
 namespace SmartDog.Api.Controllers;
 
@@ -14,13 +15,16 @@ public sealed class DecisionAssistantController : ControllerBase
 {
     private readonly SmartDogDbContext _dbContext;
     private readonly DecisionAssistantService _assistant;
+    private readonly ICurrentUser _currentUser;
 
     public DecisionAssistantController(
         SmartDogDbContext dbContext,
-        DecisionAssistantService assistant)
+        DecisionAssistantService assistant,
+        ICurrentUser currentUser)
     {
         _dbContext = dbContext;
         _assistant = assistant;
+        _currentUser = currentUser;
     }
 
     [HttpPost]
@@ -48,9 +52,11 @@ public sealed class DecisionAssistantController : ControllerBase
             });
         }
 
+        // Only the owner's decision is sent to the AI provider; any other decision is reported as not found.
+        var ownerId = _currentUser.RequireUserId();
         var decision = await _dbContext.Decisions
             .AsNoTracking()
-            .Where(item => item.Id == decisionId)
+            .Where(item => item.Id == decisionId && item.OwnerId == ownerId)
             .Select(item => new
             {
                 item.Title,

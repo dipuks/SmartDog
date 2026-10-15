@@ -7,20 +7,31 @@ public class DecisionAlternativeRatingService : IDecisionAlternativeRatingServic
 {
     private readonly IDecisionAlternativeRepository _alternativeRepository;
     private readonly IDecisionCriterionRepository _criterionRepository;
+    private readonly IDecisionRepository _decisionRepository;
+    private readonly ICurrentUser _currentUser;
 
     public DecisionAlternativeRatingService(
         IDecisionAlternativeRepository alternativeRepository,
-        IDecisionCriterionRepository criterionRepository)
+        IDecisionCriterionRepository criterionRepository,
+        IDecisionRepository decisionRepository,
+        ICurrentUser currentUser)
     {
         _alternativeRepository = alternativeRepository;
         _criterionRepository = criterionRepository;
+        _decisionRepository = decisionRepository;
+        _currentUser = currentUser;
     }
+
+    /// <summary>Every operation first checks that the decision belongs to the signed-in user.</summary>
+    private Task<bool> OwnsDecisionAsync(Guid decisionId) =>
+        _decisionRepository.ExistsAsync(decisionId, _currentUser.RequireUserId());
 
     public async Task<IReadOnlyList<DecisionAlternativeRatingDto>?> GetAsync(
         Guid decisionId,
         Guid alternativeId)
     {
-        if (await _alternativeRepository.GetByIdAndDecisionIdAsync(
+        if (!await OwnsDecisionAsync(decisionId) ||
+            await _alternativeRepository.GetByIdAndDecisionIdAsync(
                 alternativeId,
                 decisionId) is null)
         {
@@ -45,7 +56,8 @@ public class DecisionAlternativeRatingService : IDecisionAlternativeRatingServic
         Guid criterionId,
         UpdateDecisionAlternativeRatingRequest request)
     {
-        if (await _alternativeRepository.GetByIdAndDecisionIdAsync(
+        if (!await OwnsDecisionAsync(decisionId) ||
+            await _alternativeRepository.GetByIdAndDecisionIdAsync(
                 alternativeId,
                 decisionId) is null)
         {

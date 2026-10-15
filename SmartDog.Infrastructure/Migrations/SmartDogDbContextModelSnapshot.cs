@@ -34,6 +34,9 @@ namespace SmartDog.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<Guid?>("OwnerId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -51,6 +54,8 @@ namespace SmartDog.Infrastructure.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("OwnerId", "CreatedAt");
 
                     b.ToTable("Decisions", (string)null);
                 });
@@ -160,6 +165,14 @@ namespace SmartDog.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("Users", (string)null);
+                });
+
+            modelBuilder.Entity("SmartDog.Domain.Models.Decision", b =>
+                {
+                    b.HasOne("SmartDog.Domain.Models.User", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("SmartDog.Domain.Models.DecisionAlternative", b =>

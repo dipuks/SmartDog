@@ -7,19 +7,26 @@ public class DecisionCriterionService : IDecisionCriterionService
 {
     private readonly IDecisionCriterionRepository _criterionRepository;
     private readonly IDecisionRepository _decisionRepository;
+    private readonly ICurrentUser _currentUser;
 
     public DecisionCriterionService(
         IDecisionCriterionRepository criterionRepository,
-        IDecisionRepository decisionRepository)
+        IDecisionRepository decisionRepository,
+        ICurrentUser currentUser)
     {
         _criterionRepository = criterionRepository;
         _decisionRepository = decisionRepository;
+        _currentUser = currentUser;
     }
+
+    /// <summary>Every operation first checks that the decision belongs to the signed-in user.</summary>
+    private Task<bool> OwnsDecisionAsync(Guid decisionId) =>
+        _decisionRepository.ExistsAsync(decisionId, _currentUser.RequireUserId());
 
     public async Task<IReadOnlyList<DecisionCriterionDto>?> GetByDecisionIdAsync(
         Guid decisionId)
     {
-        if (await _decisionRepository.GetByIdAsync(decisionId) is null)
+        if (!await OwnsDecisionAsync(decisionId))
         {
             return null;
         }
@@ -32,6 +39,11 @@ public class DecisionCriterionService : IDecisionCriterionService
         Guid decisionId,
         Guid criterionId)
     {
+        if (!await OwnsDecisionAsync(decisionId))
+        {
+            return null;
+        }
+
         var criterion = await _criterionRepository.GetByIdAndDecisionIdAsync(
             criterionId,
             decisionId);
@@ -43,7 +55,7 @@ public class DecisionCriterionService : IDecisionCriterionService
         Guid decisionId,
         CreateDecisionCriterionRequest request)
     {
-        if (await _decisionRepository.GetByIdAsync(decisionId) is null)
+        if (!await OwnsDecisionAsync(decisionId))
         {
             return null;
         }
@@ -66,6 +78,11 @@ public class DecisionCriterionService : IDecisionCriterionService
         Guid criterionId,
         UpdateDecisionCriterionRequest request)
     {
+        if (!await OwnsDecisionAsync(decisionId))
+        {
+            return null;
+        }
+
         var criterion = await _criterionRepository.GetByIdAndDecisionIdAsync(
             criterionId,
             decisionId);
@@ -84,6 +101,11 @@ public class DecisionCriterionService : IDecisionCriterionService
 
     public async Task<bool> DeleteAsync(Guid decisionId, Guid criterionId)
     {
+        if (!await OwnsDecisionAsync(decisionId))
+        {
+            return false;
+        }
+
         var criterion = await _criterionRepository.GetByIdAndDecisionIdAsync(
             criterionId,
             decisionId);

@@ -13,18 +13,20 @@ public class DecisionRepository : IDecisionRepository
         _dbContext = dbContext;
     }
 
-    public async Task<IReadOnlyList<Decision>> GetAllAsync()
+    public async Task<IReadOnlyList<Decision>> GetAllAsync(Guid ownerId)
     {
-        return await _dbContext.Decisions
-            .AsNoTracking()
-            .ToListAsync();
+        return await Query(ownerId).ToListAsync();
     }
 
-    public async Task<Decision?> GetByIdAsync(Guid id)
+    public async Task<Decision?> GetByIdAsync(Guid id, Guid ownerId)
     {
-        return await _dbContext.Decisions
-            .AsNoTracking()
+        return await Query(ownerId)
             .FirstOrDefaultAsync(d => d.Id == id);
+    }
+
+    public Task<bool> ExistsAsync(Guid id, Guid ownerId)
+    {
+        return _dbContext.Decisions.AnyAsync(d => d.Id == id && d.OwnerId == ownerId);
     }
 
     public async Task AddAsync(Decision decision)
@@ -52,9 +54,10 @@ public class DecisionRepository : IDecisionRepository
         _dbContext.Decisions.Remove(decision);
     }
 
-    public IQueryable<Decision> Query()
+    public IQueryable<Decision> Query(Guid ownerId)
     {
         return _dbContext.Decisions
-            .AsNoTracking();
+            .AsNoTracking()
+            .Where(d => d.OwnerId == ownerId);
     }
 }

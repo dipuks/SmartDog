@@ -11,15 +11,18 @@ public class DecisionCommandService : IDecisionCommandService
     private readonly ILogger<DecisionCommandService> _logger;
 
     private readonly IMemoryCache _cache;
+    private readonly ICurrentUser _currentUser;
 
     public DecisionCommandService(
     IDecisionRepository repository,
     ILogger<DecisionCommandService> logger,
-    IMemoryCache cache)
+    IMemoryCache cache,
+    ICurrentUser currentUser)
     {
         _repository = repository;
         _logger = logger;
         _cache = cache;
+        _currentUser = currentUser;
     }
 
     public async Task<DecisionDto> CreateAsync(
@@ -35,7 +38,9 @@ public class DecisionCommandService : IDecisionCommandService
             Title = request.Title,
             Description = request.Description,
             CreatedAt = DateTime.UtcNow,
-            Status = "Created"
+            Status = "Created",
+            // Always the signed-in user; requests carry no owner, so one cannot be forged.
+            OwnerId = _currentUser.RequireUserId()
         };
 
         await _repository.AddAsync(decision);
@@ -62,7 +67,8 @@ public class DecisionCommandService : IDecisionCommandService
             "Updating decision {DecisionId}",
             id);
 
-        var decision = await _repository.GetByIdAsync(id);
+        var ownerId = _currentUser.RequireUserId();
+        var decision = await _repository.GetByIdAsync(id, ownerId);
 
         if (decision is null)
         {
@@ -90,7 +96,7 @@ public class DecisionCommandService : IDecisionCommandService
         _repository.Update(decision);
 
         await _repository.SaveChangesAsync();
-        _cache.Remove($"decision:{id}");
+        _cache.Remove(DecisionCacheKeys.Decision(ownerId, id));
 
         _logger.LogInformation(
             "Decision {DecisionId} updated successfully",
@@ -111,7 +117,8 @@ public class DecisionCommandService : IDecisionCommandService
             "Deleting decision {DecisionId}",
             id);
 
-        var decision = await _repository.GetByIdAsync(id);
+        var ownerId = _currentUser.RequireUserId();
+        var decision = await _repository.GetByIdAsync(id, ownerId);
 
         if (decision is null)
         {
@@ -125,7 +132,7 @@ public class DecisionCommandService : IDecisionCommandService
         await _repository.DeleteAsync(decision);
 
         await _repository.SaveChangesAsync();
-        _cache.Remove($"decision:{id}");
+        _cache.Remove(DecisionCacheKeys.Decision(ownerId, id));
 
         _logger.LogInformation(
             "Decision {DecisionId} deleted successfully",

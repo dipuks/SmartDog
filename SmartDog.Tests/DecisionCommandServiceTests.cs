@@ -25,7 +25,8 @@ public class DecisionCommandServiceTests
         var service = new DecisionCommandService(
             repository.Object,
             logger.Object,
-            _cache);
+            _cache,
+            TestCurrentUser.Owner);
 
         var request = new CreateDecisionRequest(
             "Choose AI Model",
@@ -61,7 +62,7 @@ public class DecisionCommandServiceTests
         var repository = new Mock<IDecisionRepository>();
 
         repository
-            .Setup(r => r.GetByIdAsync(It.IsAny<Guid>()))
+            .Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), TestCurrentUser.OwnerId))
             .ReturnsAsync((Decision?)null);
 
         var logger = new Mock<
@@ -70,7 +71,8 @@ public class DecisionCommandServiceTests
         var service = new DecisionCommandService(
             repository.Object,
             logger.Object,
-            _cache);
+            _cache,
+            TestCurrentUser.Owner);
 
         var id = Guid.NewGuid();
 
@@ -116,7 +118,7 @@ public class DecisionCommandServiceTests
         var repository = new Mock<IDecisionRepository>();
 
         repository
-            .Setup(r => r.GetByIdAsync(id))
+            .Setup(r => r.GetByIdAsync(id, TestCurrentUser.OwnerId))
             .ReturnsAsync(existingDecision);
 
         var logger = new Mock<
@@ -125,7 +127,8 @@ public class DecisionCommandServiceTests
         var service = new DecisionCommandService(
             repository.Object,
             logger.Object,
-            _cache);
+            _cache,
+            TestCurrentUser.Owner);
 
         var request = new UpdateDecisionRequest(
             "New Title",
@@ -172,7 +175,7 @@ public class DecisionCommandServiceTests
         };
         var repository = new Mock<IDecisionRepository>();
         repository
-            .Setup(r => r.GetByIdAsync(id))
+            .Setup(r => r.GetByIdAsync(id, TestCurrentUser.OwnerId))
             .ReturnsAsync(decision);
         repository
             .Setup(r => r.DeleteAsync(decision))
@@ -180,7 +183,8 @@ public class DecisionCommandServiceTests
         var service = new DecisionCommandService(
             repository.Object,
             Mock.Of<ILogger<DecisionCommandService>>(),
-            _cache);
+            _cache,
+            TestCurrentUser.Owner);
         var request = new UpdateDecisionRequest(
             "Reopen decision",
             null,
@@ -204,7 +208,7 @@ public class DecisionCommandServiceTests
         var repository = new Mock<IDecisionRepository>();
 
         repository
-            .Setup(r => r.GetByIdAsync(id))
+            .Setup(r => r.GetByIdAsync(id, TestCurrentUser.OwnerId))
             .ReturnsAsync((Decision?)null);
         repository
             .Setup(r => r.DeleteAsync(It.IsAny<Decision>()))
@@ -216,7 +220,8 @@ public class DecisionCommandServiceTests
         var service = new DecisionCommandService(
             repository.Object,
             logger.Object,
-            _cache);
+            _cache,
+            TestCurrentUser.Owner);
 
         // Act
 
@@ -254,7 +259,7 @@ public class DecisionCommandServiceTests
         var repository = new Mock<IDecisionRepository>();
 
         repository
-            .Setup(r => r.GetByIdAsync(id))
+            .Setup(r => r.GetByIdAsync(id, TestCurrentUser.OwnerId))
             .ReturnsAsync(decision);
 
         var logger = new Mock<
@@ -263,7 +268,8 @@ public class DecisionCommandServiceTests
         var service = new DecisionCommandService(
             repository.Object,
             logger.Object,
-            _cache);
+            _cache,
+            TestCurrentUser.Owner);
 
         // Act
 
@@ -280,5 +286,41 @@ public class DecisionCommandServiceTests
         repository.Verify(
             r => r.SaveChangesAsync(),
             Times.Once);
+    }
+    [Fact]
+    public async Task CreateAsync_AssignsTheSignedInUserAsOwner()
+    {
+        var repository = new Mock<IDecisionRepository>();
+        Decision? added = null;
+        repository
+            .Setup(r => r.AddAsync(It.IsAny<Decision>()))
+            .Callback<Decision>(decision => added = decision)
+            .Returns(Task.CompletedTask);
+        var service = new DecisionCommandService(
+            repository.Object,
+            Mock.Of<ILogger<DecisionCommandService>>(),
+            _cache,
+            TestCurrentUser.Owner);
+
+        await service.CreateAsync(new CreateDecisionRequest("Pick a vendor", null));
+
+        Assert.Equal(TestCurrentUser.OwnerId, added?.OwnerId);
+    }
+
+    [Fact]
+    public async Task RequestsWithoutAUserId_AreRefusedBeforeAnyLookup()
+    {
+        // A null owner must never reach a query: it would match decisions that have no owner.
+        var repository = new Mock<IDecisionRepository>(MockBehavior.Strict);
+        var service = new DecisionCommandService(
+            repository.Object,
+            Mock.Of<ILogger<DecisionCommandService>>(),
+            _cache,
+            new TestCurrentUser(null));
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => service.CreateAsync(new CreateDecisionRequest("Pick a vendor", null)));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => service.DeleteAsync(Guid.NewGuid()));
     }
 }

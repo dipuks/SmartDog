@@ -29,5 +29,13 @@ public class DecisionConfiguration : IEntityTypeConfiguration<Decision>
         builder.Property(d => d.RowVersion)
             .IsRowVersion()
             .IsConcurrencyToken();
+
+        // Every query is scoped to the owner; this index also serves the owner's list ordered by creation time.
+        builder.HasIndex(d => new { d.OwnerId, d.CreatedAt });
+
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(d => d.OwnerId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }
