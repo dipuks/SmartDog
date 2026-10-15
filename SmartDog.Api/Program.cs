@@ -7,7 +7,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.RateLimiting;
 using SmartDog.Api.Middleware;
+using SmartDog.Api.Observability;
 using SmartDog.Api.Security;
+using SmartDog.Domain.Evaluation;
 using SmartDog.Api.Services;
 using SmartDog.Api.Workers;
 using SmartDog.Domain.Engines;
@@ -26,6 +28,11 @@ builder.Services.AddExceptionHandler<MissingUserExceptionHandler>();
 // Every decision read or write is scoped to the signed-in user (the JWT subject).
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+
+// Stateless structured evaluation (POST /api/decisions/evaluate) for service clients, protected by an API key.
+builder.Services.AddSingleton<WeightedDecisionEvaluator>();
+builder.Services.Configure<DecisionApiOptions>(
+    builder.Configuration.GetSection(DecisionApiOptions.SectionName));
 
 builder.Services.AddDbContext<SmartDogDbContext>(options =>
     options.UseSqlServer(
@@ -89,6 +96,16 @@ builder.Services.AddRateLimiter(options =>
                 QueueLimit = 0,
                 AutoReplenishment = true
             }));
+    options.AddPolicy(SmartDog.Api.Controllers.DecisionEvaluationController.RateLimitPolicy, httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
 });
 
 builder.Services.AddHttpClient<DecisionAssistantService>(client =>
@@ -135,7 +152,10 @@ builder.Services
 
             ClockSkew = TimeSpan.Zero
         };
-    });
+    })
+    // Service-to-service key, accepted only by the evaluation API (user endpoints keep requiring a JWT).
+    .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationHandler.SchemeName, _ => { });
 
 builder.Services.AddAuthorization();
 
@@ -205,6 +225,8 @@ if (app.Environment.IsDevelopment())
             seedPassword);
     }
 }
+
+app.UseMiddleware<CorrelationMiddleware>();
 
 app.UseExceptionHandler();
 
