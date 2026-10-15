@@ -9,11 +9,14 @@ namespace SmartDog.Domain.Evaluation;
 /// <list type="number">
 /// <item>Options violating any hard constraint are excluded and reported with the violated constraints.</item>
 /// <item>Each criterion is normalized across the remaining options to 0–1 where 1 is best (max for "maximize", min
-/// for "minimize"). A criterion with identical values for all remaining options normalizes to 1 for each, so it
-/// cannot change the order.</item>
+/// for "minimize"). A criterion whose remaining values are all equal normalizes to 1 for each, so it cannot change the
+/// order. Values are equal when they differ by at most 1e-12 of their magnitude (floating-point noise), at any scale.</item>
 /// <item>Weights are divided by their sum; score = Σ normalized weight × normalized value (0–1).</item>
-/// <item>Higher score ranks first; equal scores (within 1e-9) are ordered by option id (ordinal) and reported as ties.</item>
+/// <item>Higher score ranks first. Scores are compared at a resolution of 1e-9: options whose scores round to the same
+/// multiple of 1e-9 are ties, ordered by option id (ordinal) and reported as such. The same rounded key drives both the
+/// order and the ties, so tie groups are always adjacent and transitive.</item>
 /// </list>
+/// Constraint operators use the same equality, so <c>&lt;=</c> and <c>&gt;=</c> agree with <c>==</c>.
 /// </summary>
 public sealed partial class WeightedDecisionEvaluator
 {
@@ -21,7 +24,12 @@ public sealed partial class WeightedDecisionEvaluator
     public const int MaxOptions = 200;
     public const int MaxConstraints = 50;
     public const double MaxWeight = 1_000;
-    private const double TieTolerance = 1e-9;
+    /// <summary>Largest accepted magnitude for option and constraint values, so ranges cannot overflow.</summary>
+    public const double MaxAbsoluteValue = 1e15;
+    /// <summary>Scores (0–1) are ranked and tied at this resolution.</summary>
+    private const double ScoreResolution = 1e-9;
+    /// <summary>Values within this fraction of their magnitude are equal: floating-point noise, at any scale.</summary>
+    private const double RelativeTolerance = 1e-12;
 
     public const string Method =
         "Weighted sum of min–max normalized criteria: each criterion is scaled to 0–1 across the feasible options " +
@@ -76,7 +84,7 @@ public sealed partial class WeightedDecisionEvaluator
             notes.Add("No option satisfies every hard constraint; relax a constraint or add options.");
             return new EvaluationResult(Guid.NewGuid(), EvaluationStatus.NoFeasibleOption, request.Question, Method, weighted, [], infeasible, notes, Limitations);
         }
-        foreach (var c in weighted.Where(c => feasible.Count > 1 && c.MaximumValue - c.MinimumValue < TieTolerance))
+        foreach (var c in weighted.Where(c => feasible.Count > 1 && NearlyEqual(c.MinimumValue!.Value, c.MaximumValue!.Value)))
             notes.Add($"'{c.Name}' has the same value ({Format(c.MinimumValue!.Value)}) for every ranked option, so it does not affect the order.");
 
         // 3. Scores.
@@ -86,16 +94,18 @@ public sealed partial class WeightedDecisionEvaluator
             {
                 var raw = Value(option, c.Id);
                 var range = c.MaximumValue!.Value - c.MinimumValue!.Value;
-                var normalized = range < TieTolerance ? 1.0
+                var normalized = NearlyEqual(c.MinimumValue.Value, c.MaximumValue.Value) ? 1.0
                     : c.Direction == "minimize" ? (c.MaximumValue.Value - raw) / range
                     : (raw - c.MinimumValue.Value) / range;
                 var share = c.Weight / totalWeight;
                 return (Raw: raw, Normalized: normalized, Share: share, Contribution: share * normalized, Criterion: c);
             }).ToList();
-            return (Option: option, Score: contributions.Sum(x => x.Contribution), Contributions: contributions);
+            var score = contributions.Sum(x => x.Contribution);
+            return (Option: option, Score: score, Key: ScoreKey(score), Contributions: contributions);
         })
-        // Round before sorting so floating-point noise can never override the documented id tie-break.
-        .OrderByDescending(x => Math.Round(x.Score, 9))
+        // One quantized key orders the ranking and defines ties, so floating-point noise can never override the
+        // documented id tie-break and tied options are always adjacent.
+        .OrderByDescending(x => x.Key)
         .ThenBy(x => x.Option.Id, StringComparer.Ordinal)
         .ToList();
 
@@ -104,15 +114,17 @@ public sealed partial class WeightedDecisionEvaluator
         for (var i = 0; i < scored.Count; i++)
         {
             var current = scored[i];
-            var tiedWith = scored.Where(x => x.Option.Id != current.Option.Id && Math.Abs(x.Score - current.Score) <= TieTolerance)
+            var tiedWith = scored.Where(x => x.Option.Id != current.Option.Id && x.Key == current.Key)
                 .Select(x => x.Option.Id!).ToList();
             var contributions = current.Contributions.Select(x => new CriterionContribution(
                 x.Criterion.Id, x.Raw, Round(x.Normalized), Round(x.Share), Round(x.Contribution))).ToList();
-            ranking.Add(new RankedOption(i + 1, current.Option.Id!, OptionName(current.Option), Round(current.Score), contributions,
+            // Tied options report their shared key as the score, so a response never shows a tie with unequal scores.
+            var score = tiedWith.Count == 0 ? Round(current.Score) : Round(current.Key * ScoreResolution);
+            ranking.Add(new RankedOption(i + 1, current.Option.Id!, OptionName(current.Option), score, contributions,
                 Explain(i + 1, scored.Count, current.Score, current.Contributions.Select(x => (x.Criterion, x.Raw, x.Normalized, x.Contribution)).ToList(), tiedWith),
                 tiedWith));
         }
-        var tieGroups = ranking.Where(r => r.TiedWithOptionIds.Count > 0).Select(r => r.Score).Distinct().Count();
+        var tieGroups = scored.GroupBy(x => x.Key).Count(g => g.Count() > 1);
         if (tieGroups > 0) notes.Add($"{tieGroups} group(s) of options have equal scores; tied options are ordered by option id.");
 
         return new EvaluationResult(Guid.NewGuid(), EvaluationStatus.Ranked, request.Question, Method, weighted, ranking, infeasible, notes, Limitations);
@@ -168,7 +180,7 @@ public sealed partial class WeightedDecisionEvaluator
             foreach (var (key, value) in values)
             {
                 if (!criterionIds.Contains(key)) Add($"{path}.values.{key}", $"'{key}' is not one of the request's criteria.");
-                else if (value is null || !double.IsFinite(value.Value)) Add($"{path}.values.{key}", "Value must be a finite number.");
+                else if (value is null || !IsAcceptedValue(value.Value)) Add($"{path}.values.{key}", ValueRule);
             }
         }
 
@@ -181,7 +193,7 @@ public sealed partial class WeightedDecisionEvaluator
             if (c is null) { Add(path, "Constraint must not be null."); continue; }
             if (c.CriterionId is null || !criterionIds.Contains(c.CriterionId)) Add($"{path}.criterionId", "Constraint must reference one of the request's criteria.");
             if (c.Operator is null || !Operators.Contains(c.Operator)) Add($"{path}.operator", "Operator must be one of <, <=, >, >=, ==, !=.");
-            if (c.Value is null || !double.IsFinite(c.Value.Value)) Add($"{path}.value", "Value must be a finite number.");
+            if (c.Value is null || !IsAcceptedValue(c.Value.Value)) Add($"{path}.value", ValueRule);
         }
 
         if (errors.Count > 0) throw new EvaluationValidationException(errors.ToDictionary(x => x.Key, x => x.Value.ToArray()));
@@ -211,14 +223,25 @@ public sealed partial class WeightedDecisionEvaluator
 
     private static bool Compare(double actual, string op, double expected) => op switch
     {
-        "<" => actual < expected,
-        "<=" => actual <= expected,
-        ">" => actual > expected,
-        ">=" => actual >= expected,
-        "==" => Math.Abs(actual - expected) < TieTolerance,
-        "!=" => Math.Abs(actual - expected) >= TieTolerance,
+        "<" => actual < expected && !NearlyEqual(actual, expected),
+        "<=" => actual < expected || NearlyEqual(actual, expected),
+        ">" => actual > expected && !NearlyEqual(actual, expected),
+        ">=" => actual > expected || NearlyEqual(actual, expected),
+        "==" => NearlyEqual(actual, expected),
+        "!=" => !NearlyEqual(actual, expected),
         _ => false
     };
+
+    private const string ValueRule = "Value must be a finite number between -1e15 and 1e15.";
+
+    private static bool IsAcceptedValue(double value) => double.IsFinite(value) && Math.Abs(value) <= MaxAbsoluteValue;
+
+    /// <summary>Equal, or different only by floating-point noise relative to their magnitude.</summary>
+    internal static bool NearlyEqual(double a, double b) =>
+        a == b || Math.Abs(a - b) <= RelativeTolerance * Math.Max(Math.Abs(a), Math.Abs(b));
+
+    /// <summary>The score as a whole number of <see cref="ScoreResolution"/> steps: the ranking and tie key.</summary>
+    internal static long ScoreKey(double score) => (long)Math.Round(score / ScoreResolution, MidpointRounding.AwayFromZero);
 
     private static string Format(double value) => value.ToString("0.####", CultureInfo.InvariantCulture);
 
