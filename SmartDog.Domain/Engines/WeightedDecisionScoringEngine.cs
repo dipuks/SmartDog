@@ -81,16 +81,19 @@ public class WeightedDecisionScoringEngine : IDecisionScoringEngine
             var score = decisionCriteria.Sum(criterion =>
                 criterion.Weight * ratingsByCriterion[criterion.Id] / 100m);
 
-            return new DecisionScore(
-                alternative.Id,
-                alternative.Name,
-                Math.Round(score, 2, MidpointRounding.AwayFromZero));
+            return (alternative.Id, alternative.Name, Exact: score);
         });
 
+        // Rank on the exact (decimal) score and round only what is reported: rounding first would turn scores such as
+        // 85.004 and 85.001 into a tie and let the name decide the order.
         return results
-            .OrderByDescending(result => result.Score)
-            .ThenBy(result => result.AlternativeName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(result => result.AlternativeId)
+            .OrderByDescending(result => result.Exact)
+            .ThenBy(result => result.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(result => result.Id)
+            .Select(result => new DecisionScore(
+                result.Id,
+                result.Name,
+                Math.Round(result.Exact, 2, MidpointRounding.AwayFromZero)))
             .ToList();
     }
 }

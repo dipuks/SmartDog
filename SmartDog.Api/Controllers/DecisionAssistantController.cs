@@ -138,15 +138,18 @@ public sealed class DecisionAssistantController : ControllerBase
             ? alternatives.Select(alternative => new
                 {
                     alternative.Name,
-                    Score = Math.Round(
-                        criteria.Sum(criterion =>
-                            criterion.Weight *
-                            ratingsByPair[(alternative.Id, criterion.Id)] / 100m),
-                        2,
-                        MidpointRounding.AwayFromZero)
+                    Exact = criteria.Sum(criterion =>
+                        criterion.Weight *
+                        ratingsByPair[(alternative.Id, criterion.Id)] / 100m)
                 })
-                .OrderByDescending(item => item.Score)
+                // Same order as the results endpoint: exact score first, rounded only for display.
+                .OrderByDescending(item => item.Exact)
                 .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+                .Select(item => new
+                {
+                    item.Name,
+                    Score = Math.Round(item.Exact, 2, MidpointRounding.AwayFromZero)
+                })
                 .ToArray()
             : null;
 

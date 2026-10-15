@@ -153,4 +153,29 @@ public class DecisionScoringEngineTests
                 criteria,
                 [alternative]));
     }
+    [Fact]
+    public void Score_WithCriteria_RanksByExactScoreAndRoundsOnlyTheReportedValue()
+    {
+        // 85.004 and 85.001 both round to 85.00; ranking the rounded values let the name decide ("Alpha" first).
+        var decisionId = Guid.NewGuid();
+        var criterion = new DecisionCriterion { Id = Guid.NewGuid(), DecisionId = decisionId, Name = "Quality", Weight = 100 };
+        DecisionAlternative Alternative(string name, decimal rating)
+        {
+            var alternative = new DecisionAlternative { Id = Guid.NewGuid(), DecisionId = decisionId, Name = name };
+            alternative.CriterionRatings.Add(new DecisionAlternativeCriterionRating
+            {
+                DecisionId = decisionId,
+                DecisionAlternativeId = alternative.Id,
+                DecisionCriterionId = criterion.Id,
+                Rating = rating
+            });
+            return alternative;
+        }
+        var engine = new WeightedDecisionScoringEngine();
+
+        var results = engine.Score([criterion], [Alternative("Alpha", 85.001m), Alternative("Beta", 85.004m)]).ToList();
+
+        Assert.Equal(new[] { "Beta", "Alpha" }, results.Select(result => result.AlternativeName));
+        Assert.Equal(new[] { 85.00m, 85.00m }, results.Select(result => result.Score));
+    }
 }
